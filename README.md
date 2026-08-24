@@ -66,16 +66,16 @@ Then it writes a contact sheet, because a machine can prove a page works and can
 ## Install
 
 ```bash
-/plugin marketplace add nateherkai/scroll-craft
+/plugin marketplace add inematds/scroll-craft
 ```
 ```bash
-/plugin install nateherk-design
+/plugin install main-design
 ```
 
 Then use it by describing what you want, or invoke it directly:
 
 ```
-/nateherk-design:scrollcraft
+/main-design:scrollcraft
 ```
 
 If the install summary says `Run /reload-plugins to activate.`, run that.
@@ -83,7 +83,7 @@ If the install summary says `Run /reload-plugins to activate.`, run that.
 To hack on the skill without installing:
 
 ```bash
-claude --plugin-dir ./plugins/nateherk-design
+claude --plugin-dir ./plugins/main-design
 ```
 
 ## First run
@@ -119,7 +119,7 @@ Builds land in `<workspace>/builds/<name>/`; your registry is `<workspace>/FINGE
 ## What is in here
 
 ```
-plugins/nateherk-design/
+plugins/main-design/
 └── skills/scrollcraft/
     ├── SKILL.md            the procedure: interview, grammar, score, build, verify
     ├── references/
@@ -137,7 +137,7 @@ plugins/nateherk-design/
     └── scripts/            doctor · workspace · kie · encode · serve · shoot · worldflight-assert
 ```
 
-[`CHANGELOG.md`](plugins/nateherk-design/skills/scrollcraft/CHANGELOG.md) is worth reading on its own: it records what broke on each build and the rule that came out of it, rather than a feature list.
+[`CHANGELOG.md`](plugins/main-design/skills/scrollcraft/CHANGELOG.md) is worth reading on its own: it records what broke on each build and the rule that came out of it, rather than a feature list.
 
 ## The one rule that matters most
 
