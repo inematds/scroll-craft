@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scrollcraft — sites com scroll como timeline, num padrão de craft de verdade</title>
+<meta name="description" content="Skill do Claude Code que constrói páginas scroll-driven premium e verifica o próprio trabalho: contraste, motion morto e clipes travados, num headless browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0c10; --bg2:#14141b; --card:#16161e; --line:#272730;
+    --txt:#e9e9ee; --mut:#9a9aa6; --amb:#E2A23B; --amb2:#f0c070; --sky:#38bdf8; --pro:#cbd5e1;
+    color-scheme:dark;
+  }
+  body.light{
+    --bg:#f6f7f9; --bg2:#eceef2; --card:#ffffff; --line:#e1e3ea;
+    --txt:#1a1a22; --mut:#5b5b68; --amb:#b9791d; --amb2:#a16207; --sky:#0369a1; --pro:#b45309;
+    color-scheme:light;
+  }
+  body.light .hero .glow{opacity:.5}
+  body.light pre{background:#0e0e14;color:#d6d6e0}
+  body.light pre .c{color:#8a8a98}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.65 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:Sora,sans-serif;line-height:1.15;margin:0}
+  a{color:var(--amb);text-decoration:none}
+  code,pre{font-family:"JetBrains Mono",monospace}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+  .mut{color:var(--mut)} .amb{color:var(--amb)}
+  .chip{display:inline-block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--amb);font-weight:600;font-family:Sora}
+  nav{position:sticky;top:0;z-index:30;backdrop-filter:blur(12px);background:rgba(12,12,16,.78);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:22px;height:60px}
+  nav .brand{display:flex;align-items:center;gap:8px;font-family:Sora;font-weight:800;letter-spacing:-.02em;color:var(--amb)}
+  nav .brand .emoji{font-size:1.25rem}
+  nav .sep{color:var(--mut);opacity:.45}
+  nav .inema{color:var(--sky);font-weight:600;font-size:.88rem;font-family:Sora}
+  nav .inema:hover{filter:brightness(1.15)}
+  nav .pro{color:var(--pro);font-weight:600;font-size:.88rem;font-family:Sora}
+  nav .pro:hover{filter:brightness(1.15)}
+  nav .clubpro{display:inline-flex;align-items:center;gap:6px}
+  nav .links{margin-left:auto;display:flex;align-items:center;gap:20px;font-size:.92rem}
+  nav .links a.sec{color:var(--mut)} nav .links a.sec:hover{color:var(--txt)}
+  .tgl{background:var(--bg2);border:1px solid var(--line);color:var(--txt);width:38px;height:38px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:1.05rem}
+  .tgl:hover{border-color:var(--amb)}
+  .btn{display:inline-block;background:var(--amb);color:#1a1206;font-weight:600;padding:.6em 1.05em;border-radius:10px;font-family:Sora}
+  .btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  @media(max-width:760px){nav .links a.sec{display:none}}
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero .glow{position:absolute;inset:-40% -20% auto auto;width:70%;height:600px;background:radial-gradient(closest-side,rgba(226,162,59,.22),transparent 70%);pointer-events:none}
+  .hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:74px 22px}
+  .hero h1{font-size:clamp(2.2rem,5vw,3.5rem);font-weight:800;letter-spacing:-.025em}
+  .hero p.lead{font-size:1.18rem;color:var(--mut);margin:1.1em 0 1.6em;max-width:34ch}
+  .hero .cta{display:flex;gap:12px;flex-wrap:wrap}
+  .hero figure{margin:0;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 30px 80px -30px #000}
+  .hero figure img{width:100%;display:block}
+  @media(max-width:780px){.hero .wrap{grid-template-columns:1fr;padding:48px 22px}}
+  section{padding:62px 0;border-bottom:1px solid var(--line)}
+  section h2{font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:800;letter-spacing:-.02em}
+  section .sub{color:var(--mut);margin:.6em 0 2em;max-width:62ch}
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.g3,.g4{grid-template-columns:1fr 1fr}}
+  @media(max-width:540px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{font-size:1.05rem;margin-bottom:.4em}
+  .card p{color:var(--mut);font-size:.92rem;margin:0}
+  .num{display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;border-radius:8px;background:rgba(226,162,59,.14);color:var(--amb);font-family:Sora;font-weight:800;font-size:.9rem;margin-bottom:.7em}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+  .flow span{background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:.45em .9em;font-size:.85rem;font-family:Sora;font-weight:600}
+  .flow .arr{color:var(--amb);border:none;background:none;padding:0 .1em}
+  pre{background:#0a0a0e;border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:auto;font-size:.86rem;line-height:1.6;color:#d6d6e0}
+  pre .c{color:#6f6f7c} pre .k{color:var(--amb2)} pre .s{color:#9ece6a}
+  .step{display:grid;grid-template-columns:46px 1fr;gap:16px;margin-bottom:26px}
+  .step .b{width:46px;height:46px;border-radius:12px;background:var(--amb);color:#1a1206;font-family:Sora;font-weight:800;font-size:1.25rem;display:flex;align-items:center;justify-content:center}
+  .step h3{font-size:1.12rem;margin-bottom:.3em}
+  .step p{color:var(--mut);margin:.2em 0 .7em}
+  .ex{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+  @media(max-width:900px){.ex{grid-template-columns:1fr}}
+  .ex figure{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+  .ex figure img{width:100%;display:block}
+  .ex figcaption{padding:12px 14px;font-size:.88rem;color:var(--mut);background:var(--card)}
+  .phase{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .phase:last-child{border:none}
+  .phase .tag{flex:0 0 92px;font-family:Sora;font-weight:800;color:var(--amb)}
+  .phase .d strong{display:block;margin-bottom:.2em}
+  .phase .d span{color:var(--mut);font-size:.92rem}
+  footer{padding:46px 0;text-align:center;color:var(--mut);font-size:.9rem}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:.3em .8em;font-size:.78rem;color:var(--mut);margin:0 4px}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top"><span class="emoji">🎬</span> scrollcraft</a>
+  <span class="sep">|</span>
+  <span class="clubpro">
+    <a class="inema" href="https://inema.club" target="_blank" rel="noopener">INEMA.CLUB</a>
+    <span class="sep">-</span>
+    <a class="pro" href="https://inema.pro" target="_blank" rel="noopener">PRO</a>
+  </span>
+  <div class="links">
+    <a class="sec" href="#oque">O que é</a>
+    <a class="sec" href="#fluxo">Como funciona</a>
+    <a class="sec" href="#guia">Guia de uso</a>
+    <a class="sec" href="#exemplos">Exemplos</a>
+    <a class="sec" href="#roadmap">Limitações</a>
+    <button class="tgl" id="themeToggle" aria-label="Alternar tema" title="Alternar tema">🌙</button>
+    <a class="btn" href="https://github.com/inematds/scroll-craft" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</div></nav>
+
+<header class="hero" id="top">
+  <div class="glow"></div>
+  <div class="wrap">
+    <div>
+      <span class="chip">Claude Code · plugin de design</span>
+      <h1>Scroll vira <span class="amb">timeline</span>, não decoração</h1>
+      <p class="lead">Skill que constrói páginas scroll-driven premium e recusa o padrão genérico de IA: os mesmos seis grids, os mesmos contadores <code>01/06</code>, o mesmo gradiente roxo. Ela verifica o próprio trabalho antes de te entregar.</p>
+      <div class="cta">
+        <a class="btn" href="#guia">Começar o guia</a>
+        <a class="btn ghost" href="https://github.com/inematds/scroll-craft" target="_blank" rel="noopener">Ver no GitHub</a>
+      </div>
+    </div>
+    <figure><img src="assets/hero.png" alt="scrollcraft — vídeo scrubado por scroll numa página escura com acento âmbar"></figure>
+  </div>
+</header>
+
+<section id="oque"><div class="wrap">
+  <span class="chip">O que é</span>
+  <h2>Um plugin (<code>main-design</code>) para o Claude Code</h2>
+  <p class="sub">Instala como skill e gera páginas HTML/CSS/JS scroll-driven a partir de uma entrevista com você, obedecendo um padrão de craft fixo — não um template que só troca de cor.</p>
+  <div class="grid g3">
+    <div class="card"><h3>🎞️ Scroll é a timeline</h3><p>Vídeo scruba quadro a quadro sob a roda do mouse, seções fixam (pin) enquanto o argumento avança, rails deslizam de lado, headlines se montam linha a linha.</p></div>
+    <div class="card"><h3>🧬 Oito gramáticas, uma por build</h3><p>Filmic one-shot, editorial em capítulos, superfície viva, mundo contínuo, poster tipográfico, galeria, split stage, cutlist rítmico — cada uma proíbe o que as outras exigem.</p></div>
+    <div class="card"><h3>🔍 Verifica o próprio trabalho</h3><p>Um browser headless percorre a página em cada posição de scroll e reporta scroll morto, contraste real, cues que nunca abrem e clipes travados num "poster" congelado.</p></div>
+  </div>
+</div></section>
+
+<section id="fluxo"><div class="wrap">
+  <span class="chip">Como funciona</span>
+  <h2>Da entrevista ao contact sheet</h2>
+  <p class="sub">Cada build passa pelo mesmo procedimento antes de virar página final.</p>
+  <div class="flow">
+    <span>Entrevista</span><span class="arr">→</span>
+    <span>Gramática + fingerprint gate</span><span class="arr">→</span>
+    <span>Feeling curve + pico</span><span class="arr">→</span>
+    <span>Build (engine fixo)</span><span class="arr">→</span>
+    <span>Verificação headless</span><span class="arr">→</span>
+    <span>Contact sheet</span>
+  </div>
+  <div class="grid g2" style="margin-top:28px">
+    <div class="card"><h3>🚧 Fingerprint gate</h3><p>Um build novo tem que diferir de todo build anterior em pelo menos 4 de 6 dimensões: gramática, nav, hero, forma dos atos, fechamento, signature move. Falhou o gate? Muda o plano, não o registro.</p></div>
+    <div class="card"><h3>📈 Feeling curve</h3><p>Uma linha por ato — a emoção e o que na tela causa ela. Dois atos adjacentes com a mesma emoção significa que um é enchimento. Um pico só, com o orçamento de asset e o silêncio antes dele.</p></div>
+  </div>
+</div></section>
+
+<section id="pre"><div class="wrap">
+  <span class="chip">Pré-requisitos</span>
+  <h2>O que precisa estar instalado</h2>
+  <p class="sub">Rode <code>doctor</code> antes de qualquer coisa — ele acha os três problemas de setup que, sem ele, aparecem depois como erros enganosos.</p>
+  <div class="grid g3">
+    <div class="card"><h3>Node 18+</h3><p>Necessário para todo script do plugin.</p></div>
+    <div class="card"><h3>ffmpeg completo</h3><p>Precisa de um build cheio (com <code>scale</code>), não um stripped de ~50 filtros. <code>SCROLLCRAFT_FFMPEG</code> sobrescreve a busca.</p><pre><span class="c"># checagem automática</span>
+<span class="k">node scripts/doctor.mjs</span></pre></div>
+    <div class="card"><h3>playwright-core + Chrome</h3><p>Usado na passada de verificação. Instala na pasta do build.</p><pre><span class="c"># na pasta do build</span>
+<span class="k">npm i playwright-core</span></pre></div>
+  </div>
+</div></section>
+
+<section id="guia"><div class="wrap">
+  <span class="chip">Guia de uso · passo a passo</span>
+  <h2>Instalar, ativar, construir</h2>
+  <p class="sub">Comandos reais, na ordem em que você realmente roda.</p>
+
+  <div class="step"><div class="b">1</div><div>
+    <h3>Adicione o marketplace</h3>
+    <p>Dentro do Claude Code.</p>
+<pre><span class="k">/plugin marketplace add inematds/scroll-craft</span></pre>
+  </div></div>
+
+  <div class="step"><div class="b">2</div><div>
+    <h3>Instale o plugin</h3>
+    <p>O identificador do plugin é <code>main-design</code>.</p>
+<pre><span class="k">/plugin install main-design</span>  <span class="c"># se pedir, rode /reload-plugins</span></pre>
+  </div></div>
+
+  <div class="step"><div class="b">3</div><div>
+    <h3>Rode o preflight</h3>
+    <p>Antes de qualquer build, confirme que ffmpeg, WebP muxer e playwright-core estão certos.</p>
+<pre><span class="k">node scripts/doctor.mjs</span>              <span class="c"># diz exatamente o que falta</span>
+<span class="k">node scripts/workspace.mjs --ensure</span>  <span class="c"># cria o workspace e o registro vazio</span></pre>
+  </div></div>
+
+  <div class="step"><div class="b">4</div><div>
+    <h3>Invoque a skill</h3>
+    <p>Descreva o que quer, ou chame direto.</p>
+<pre><span class="k">/main-design:scrollcraft</span></pre>
+  </div></div>
+
+  <div class="step"><div class="b">5</div><div>
+    <h3>(Opcional) hackear sem instalar</h3>
+    <p>Para editar a skill localmente sem passar pelo marketplace.</p>
+<pre><span class="k">claude --plugin-dir ./plugins/main-design</span></pre>
+  </div></div>
+</div></section>
+
+<section id="exemplos"><div class="wrap">
+  <span class="chip">Exemplos</span>
+  <h2>Três builds, três páginas completamente diferentes</h2>
+  <p class="sub">Mesma skill, mesmo engine, nenhum esqueleto compartilhado — gramática, navegação e fechamento mudam em cada um.</p>
+  <div class="ex">
+    <figure><img src="assets/orrery.jpg" alt="Orrery — voo contínuo por um modelo em escala da Terra"><figcaption><strong>Orrery</strong> · agência de viagem. Um único palco fixo: você cai num modelo feito à mão da Terra, pousa em Kyoto, cruza pra Patagônia e o Saara, e sobe de volta pra bancada onde começou.</figcaption></figure>
+    <figure><img src="assets/perkform.jpg" alt="PERKFORM — página de produto em one-shot filmico"><figcaption><strong>PERKFORM</strong> · café proteico. One-shot filmico que corta seco pra dois fundos invertidos full-bleed no meio da página. Alto e direto ao produto.</figcaption></figure>
+    <figure><img src="assets/fallowbank.jpg" alt="Fallowbank — página documental e contida"><figcaption><strong>Fallowbank</strong> · estúdio de paisagismo. Quieta, documental. Legendas de rótulo de museu sobre fotografia real, fechamento em linha de texto corrido, sem botão.</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="roadmap"><div class="wrap">
+  <span class="chip">Limitações honestas</span>
+  <h2>O que o projeto assume, de propósito</h2>
+  <p class="sub">Direto do README — nada escondido.</p>
+  <div class="phase"><div class="tag">Plataforma</div><div class="d"><strong>Só testado no Windows</strong><span>Os scripts procuram ffmpeg e Chrome em caminhos de Windows, macOS e Linux, mas nenhum build foi feito num Mac. <code>SCROLLCRAFT_FFMPEG</code> e <code>SCROLLCRAFT_CHROME</code> sobrescrevem a busca.</span></div></div>
+  <div class="phase"><div class="tag">Custo</div><div class="d"><strong>Vídeo gerado não é de graça</strong><span>Um voo de dez pernas em mundo contínuo é gasto real. Uma página construída com assets próprios não custa nada.</span></div></div>
+  <div class="phase"><div class="tag">Postura</div><div class="d"><strong>É opinativo de propósito</strong><span>Recusa layouts e paletas que denunciam página feita por IA, e vai discutir com você sobre o seu pico. Se quiser uma página igual a todas as outras, essa não é a ferramenta certa.</span></div></div>
+</div></section>
+
+<footer>
+  <div class="wrap">
+    <div class="pill">Node</div><div class="pill">ffmpeg</div><div class="pill">Playwright</div><div class="pill">Claude Code Plugin</div>
+    <p style="margin-top:18px">scrollcraft · plugin main-design ·
+      <a href="https://github.com/inematds/scroll-craft">inematds/scroll-craft</a> ·
+      <a href="https://inema.club">INEMA.CLUB</a></p>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var KEY='scrollcraft-theme';
+    var b=document.body, t=document.getElementById('themeToggle');
+    if(localStorage.getItem(KEY)==='light'){ b.classList.add('light'); t.textContent='☀️'; }
+    t.addEventListener('click',function(){
+      var light=b.classList.toggle('light');
+      t.textContent=light?'☀️':'🌙';
+      localStorage.setItem(KEY, light?'light':'dark');
+    });
+  })();
+</script>
+</body>
+</html>

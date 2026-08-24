@@ -2,6 +2,10 @@
 
 **A Claude Code skill that builds premium, scroll-driven websites, and holds them to a real design standard.**
 
+## 📖 Guia de uso
+
+Guia completo (landing + passo a passo): **https://inematds.github.io/scroll-craft/guia/**
+
 Most AI website output fails in one of two directions. It is either well behaved and forgettable, or it is a flashy scroll animation with 2.1:1 body text, a headline that wraps to six lines on a phone, and the same six sections every other AI page has. scrollcraft is built to fail neither way: it treats **interaction** and **craft** as one job rather than two.
 
 [![MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
