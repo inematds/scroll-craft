@@ -27,23 +27,51 @@
      you cannot skip around in is a video. The engine renders no rail; it
      publishes the leg index and local progress and fires sc:waypoint, and the
      drawing is the page's job. */
+  /* On the right, because that is the free column. Measured at 1440x900: the
+     two display headlines run y169-810 and y347-810, straight through the
+     rail's y315-585 band. The only copy on this side, "Casco de voo", sits at
+     y730-810 and clears the rail by 134px, so it does not have to move. */
+  /* Centred with align-content, NOT with translateY: a transformed element
+     becomes the containing block for any fixed descendant, which pinned the
+     backing band to the rail's own height and drew it as a bounded rectangle
+     over the photograph. */
   .rail {
     position: fixed; z-index: var(--sc-z-chrome);
-    left: var(--sc-gutter); top: 50%; transform: translateY(-50%);
-    display: grid; gap: var(--sc-3);
+    right: var(--sc-gutter); top: 0; bottom: 0;
+    display: grid; align-content: center; justify-items: end; gap: var(--sc-3);
+    pointer-events: none;
   }
+  .rail__leg, .rail__play { pointer-events: auto; }
+  /* It floats over footage that swings from black space to lit cloud, so no
+     fixed colour holds on its own. A soft plate under it does. */
+  /* Anchored to the edge of the screen, full height, fading inward. A plate
+     sized to the rail itself clips its own falloff and renders as a grey box
+     with hard edges pasted on the photograph; a band that runs off three sides
+     has no boundary to show. */
+  .rail::before {
+    content: ""; position: fixed; right: 0; top: 0; bottom: 0; width: 15rem;
+    background: linear-gradient(to left,
+      rgba(5,7,10,.5) 0%, rgba(5,7,10,.26) 38%, rgba(5,7,10,0) 100%);
+    pointer-events: none; z-index: -1;
+  }
+  /* The dash sits on the OUTSIDE edge now, so the label reads inward toward the
+     picture instead of off the edge of the screen. */
   .rail__leg {
-    all: unset; cursor: pointer; display: grid; grid-template-columns: 1.5rem auto;
-    align-items: center; gap: var(--sc-3);
+    all: unset; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
+    align-items: center; gap: var(--sc-3); text-align: right;
     font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
     font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
-    color: color-mix(in oklab, var(--sc-ink) 34%, transparent);
+    /* Was 34%, which read as broken rather than as quiet over bright footage. */
+    color: color-mix(in oklab, var(--sc-ink) 62%, transparent);
+    text-shadow: 0 1px 3px rgba(5, 7, 10, .85);
     transition: color 180ms var(--sc-ease-out);
   }
   .rail__leg::before {
-    content: ""; height: 1px; width: 1.5rem; background: currentColor;
+    content: ""; order: 2; height: 1px; width: 1.5rem; background: currentColor;
+    justify-self: end;
     transition: width 220ms var(--sc-ease-out), background 180ms var(--sc-ease-out);
   }
+  .rail__name { order: 1; }
   .rail__leg:hover { color: color-mix(in oklab, var(--sc-ink) 72%, transparent); }
   .rail__leg:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 6px; border-radius: 2px; }
   .rail__leg[aria-current="true"] { color: var(--sc-ink); }
@@ -56,13 +84,16 @@
 
   /* Autoplay. The flight is normally steered by hand; this hands it back. */
   .rail__play {
-    all: unset; cursor: pointer; display: grid; grid-template-columns: 1.5rem auto;
-    align-items: center; gap: var(--sc-3); margin-bottom: var(--sc-4);
+    all: unset; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
+    align-items: center; gap: var(--sc-3); margin-bottom: var(--sc-4); text-align: right;
     font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
     font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
-    color: color-mix(in oklab, var(--sc-ink) 52%, transparent);
+    color: color-mix(in oklab, var(--sc-ink) 74%, transparent);
+    text-shadow: 0 1px 3px rgba(5, 7, 10, .85);
     transition: color 180ms var(--sc-ease-out);
   }
+  .rail__icon { order: 2; justify-self: end; }
+  .rail__playname { order: 1; }
   .rail__play:hover { color: var(--sc-ink); }
   .rail__play:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 6px; border-radius: 2px; }
   .rail__icon {
@@ -156,9 +187,9 @@
 
   /* ---------------------------------------------------------- the phone ---- */
   @media (max-width: 860px) {
-    .rail { left: auto; right: var(--sc-4); }
-    .rail__leg { grid-template-columns: 1.25rem; }
-    .rail__name { display: none; }
+    .rail { right: var(--sc-4); }
+    .rail__leg, .rail__play { grid-template-columns: 1.25rem; }
+    .rail__name, .rail__playname { display: none; }
     .hero-h1 { font-size: var(--sc-t-2xl) !important; }
   }
 </style>
