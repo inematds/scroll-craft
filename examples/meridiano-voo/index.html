@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MERIDIANO · um voo só, do assento até a Terra</title>
+<meta name="description" content="Um veículo tripulado que sobe com a cabine cheia e dá a volta na Terra. A página inteira é o voo, sem um corte.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230B0D0F'/><circle cx='16' cy='16' r='7' fill='none' stroke='%23E8863A' stroke-width='2'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  :root {
+    --sc-canvas:     #0B0D0F;
+    --sc-surface:    #15181C;
+    --sc-ink:        #ECEEF0;
+    --sc-ink-soft:   #98A2AA;
+    --sc-accent:     #E8863A;
+    --sc-accent-ink: #0B0D0F;
+    --sc-font-display: "Archivo", system-ui, sans-serif;
+    --sc-font-text:    "IBM Plex Sans", system-ui, sans-serif;
+  }
+
+  /* ------------------------------------------------------------- the rail -- */
+  /* The nav of a continuous world is a map, and it has to be clickable: a world
+     you cannot skip around in is a video. The engine renders no rail; it
+     publishes the leg index and local progress and fires sc:waypoint, and the
+     drawing is the page's job. */
+  .rail {
+    position: fixed; z-index: var(--sc-z-chrome);
+    left: var(--sc-gutter); top: 50%; transform: translateY(-50%);
+    display: grid; gap: var(--sc-3);
+  }
+  .rail__leg {
+    all: unset; cursor: pointer; display: grid; grid-template-columns: 1.5rem auto;
+    align-items: center; gap: var(--sc-3);
+    font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
+    font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
+    color: color-mix(in oklab, var(--sc-ink) 34%, transparent);
+    transition: color 180ms var(--sc-ease-out);
+  }
+  .rail__leg::before {
+    content: ""; height: 1px; width: 1.5rem; background: currentColor;
+    transition: width 220ms var(--sc-ease-out), background 180ms var(--sc-ease-out);
+  }
+  .rail__leg:hover { color: color-mix(in oklab, var(--sc-ink) 72%, transparent); }
+  .rail__leg:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 6px; border-radius: 2px; }
+  .rail__leg[aria-current="true"] { color: var(--sc-ink); }
+  .rail__leg[aria-current="true"]::before { background: var(--sc-accent); width: 2.75rem; }
+  /* The label of the leg you are on is the only one that reads at full size;
+     the rest are a position, not a menu. */
+  .rail__name { opacity: 0; transition: opacity 200ms var(--sc-ease-out); }
+  .rail__leg[aria-current="true"] .rail__name,
+  .rail:hover .rail__name { opacity: 1; }
+
+  /* Autoplay. The flight is normally steered by hand; this hands it back. */
+  .rail__play {
+    all: unset; cursor: pointer; display: grid; grid-template-columns: 1.5rem auto;
+    align-items: center; gap: var(--sc-3); margin-bottom: var(--sc-4);
+    font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
+    font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
+    color: color-mix(in oklab, var(--sc-ink) 52%, transparent);
+    transition: color 180ms var(--sc-ease-out);
+  }
+  .rail__play:hover { color: var(--sc-ink); }
+  .rail__play:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 6px; border-radius: 2px; }
+  .rail__icon {
+    width: 0; height: 0; margin-left: .35rem;
+    border-left: .6rem solid currentColor;
+    border-top: .4rem solid transparent; border-bottom: .4rem solid transparent;
+  }
+  .rail__play[aria-pressed="true"] { color: var(--sc-accent); }
+  /* Playing: the triangle becomes a pause bar pair. */
+  .rail__play[aria-pressed="true"] .rail__icon {
+    width: .55rem; height: .8rem; margin-left: .3rem; border: 0;
+    background: linear-gradient(to right,
+      currentColor 0 38%, transparent 38% 62%, currentColor 62% 100%);
+  }
+  .rail__playname { opacity: 0; transition: opacity 200ms var(--sc-ease-out); }
+  .rail:hover .rail__playname,
+  .rail__play:focus-visible .rail__playname,
+  .rail__play[aria-pressed="true"] .rail__playname { opacity: 1; }
+
+  /* --------------------------------------------------------------- copy ---- */
+  .kicker {
+    font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
+    font-weight: 600; letter-spacing: var(--sc-track-wide);
+    text-transform: uppercase; color: var(--sc-accent);
+  }
+  /* Driven from the leg progress the engine publishes on :root, NOT declared as
+     a copy block: the contrast pass hides every copy block to photograph the
+     frame underneath, so a scrim that is itself a copy block is never measured
+     and the fix silently does nothing. Measured 2.77:1 that way. */
+  .finale-scrim {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0;
+    background: linear-gradient(to top,
+      rgba(5,7,10,.97) 0%, rgba(5,7,10,.9) 28%, rgba(5,7,10,.62) 54%, rgba(5,7,10,0) 80%);
+  }
+  .hero-scrim {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0;
+    background:
+      linear-gradient(to top,
+        rgba(5,7,10,.95) 0%, rgba(5,7,10,.88) 32%, rgba(5,7,10,.6) 58%, rgba(5,7,10,0) 84%),
+      linear-gradient(to right,
+        rgba(5,7,10,.72) 0%, rgba(5,7,10,.3) 38%, rgba(5,7,10,0) 62%);
+  }
+  /* Full while the hero holds, gone by the time the hero copy has faded. */
+  :root.at-hero .hero-scrim {
+    opacity: clamp(0, calc((0.66 - var(--sc-segp, 0)) * 3.2), 1);
+  }
+
+  :root.at-finale .finale-scrim {
+    opacity: clamp(0, calc((var(--sc-segp, 0) - 0.1) * 3.4), 1);
+  }
+  /* The generated footage converged: the drift, the planet and the return all
+     resolve as "horizon with sun", so the peak stopped reading as a peak. An
+     even pace is mandatory here (weight over clip length must match across
+     legs), so the peak cannot be given more scroll the way an act page would.
+     The fix is a grade instead: the drift leg opens desaturated and dim and
+     recovers to neutral across its OWN progress, so its last frame matches the
+     next leg's first frame exactly and the seam stays invisible. The planet
+     then blooms by contrast rather than by force. */
+  /* The cabin is genuinely bright and the hero block carries small accent type,
+     which needs 4.5:1, not the 3:1 a display line gets. Grading the leg down
+     buys that without laying a heavier sheet over the photograph, and it
+     recovers on the same curve as the scrim, so by the time the hero has gone
+     the image is untouched and the seam into leg 2 is unaffected. */
+  :root.at-hero [data-sc-segment]:nth-child(1) :is(video, .sc-world__poster) {
+    filter: brightness(clamp(0.66, calc(0.66 + var(--sc-segp, 0) * 0.52), 1));
+  }
+
+  :root.at-drift [data-sc-segment]:nth-child(4) :is(video, .sc-world__poster) {
+    filter: saturate(calc(0.5 + var(--sc-segp, 0) * 0.5))
+            brightness(calc(0.76 + var(--sc-segp, 0) * 0.24));
+  }
+  /* Set uppercase in CSS rather than typed in caps, so screen readers get the
+     sentence and not a shouted string. Caps at display size want a touch MORE
+     tracking, not less: the tighten-as-it-grows rule is for mixed case, and
+     applying it to caps closes the counters up. */
+  .hero-h1 {
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+  .sc-world__copy .sc-body { max-width: 32ch; }
+  .ask { font-size: var(--sc-t-lg); line-height: 1.6; max-width: var(--sc-measure); }
+  .ask a {
+    color: var(--sc-accent); text-decoration: underline;
+    text-underline-offset: .22em; text-decoration-thickness: 1px;
+    transition: color 140ms var(--sc-ease-out);
+  }
+  .ask a:hover { color: var(--sc-ink); }
+  .ask a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 4px; border-radius: 2px; }
+
+  /* ---------------------------------------------------------- the phone ---- */
+  @media (max-width: 860px) {
+    .rail { left: auto; right: var(--sc-4); }
+    .rail__leg { grid-template-columns: 1.25rem; }
+    .rail__name { display: none; }
+    .hero-h1 { font-size: var(--sc-t-2xl) !important; }
+  }
+</style>
+</head>
+<body>
+
+<span data-sc-progress></span>
+<div class="sc-grain" aria-hidden="true"></div>
+
+<div data-sc-mode="worldflight" data-sc-seam="0.16" data-sc-lerp="0.12">
+
+  <!-- Every leg is 5s and every weight is 1.1, so weight/clip_seconds is 0.22
+       everywhere. That ratio is how fast the world moves under the hand, and a
+       spread across legs is what makes a flight surge and drag for no reason
+       the reader can see. Track: 7 x 1.1 + 1 = 8.7vh.
+
+       data-sc-lerp varies per leg on purpose. That is the signature move: the
+       playhead is stiff while the body is strapped to a seat, loose once the
+       camera is outside, and stiffens again on the way back in. -->
+  <div data-sc-world>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.28" data-sc-waypoint="Cabine">
+      <img class="sc-world__poster" src="assets/p1.webp" alt="Corredor central da cabine, passageiros presos aos assentos, uma vigia acesa ao fundo." decoding="async">
+      <video data-sc-src="assets/leg1.mp4" data-sc-src-mobile="assets/leg1-m.mp4" data-sc-lerp="0.42"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.3" data-sc-waypoint="Vigia">
+      <img class="sc-world__poster" src="assets/p2.webp" alt="A vigia crescendo até ocupar o quadro, reflexos das luzes internas no vidro." decoding="async">
+      <video data-sc-src="assets/leg2.mp4" data-sc-src-mobile="assets/leg2-m.mp4" data-sc-lerp="0.34"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.34" data-sc-waypoint="Travessia">
+      <img class="sc-world__poster" src="assets/p3.webp" alt="A câmera atravessa o vidro e o casco da nave aparece sobre a curva da Terra." decoding="async">
+      <video data-sc-src="assets/leg3.mp4" data-sc-src-mobile="assets/leg3-m.mp4" data-sc-lerp="0.12"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.42" data-sc-waypoint="Deriva">
+      <img class="sc-world__poster" src="assets/p4.webp" alt="A nave sai do quadro e resta o campo de estrelas sobre o limbo do planeta." decoding="async">
+      <video data-sc-src="assets/leg4.mp4" data-sc-src-mobile="assets/leg4-m.mp4" data-sc-lerp="0.07"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.46" data-sc-waypoint="Planeta">
+      <img class="sc-world__poster" src="assets/p5.webp" alt="O horizonte se curvando e a linha âmbar do terminador atravessando o limbo." decoding="async">
+      <video data-sc-src="assets/leg5.mp4" data-sc-src-mobile="assets/leg5-m.mp4" data-sc-lerp="0.07"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.3" data-sc-waypoint="Retorno">
+      <img class="sc-world__poster" src="assets/p6.webp" alt="A nave entra no quadro de novo, pequena e branca, sobre as nuvens." decoding="async">
+      <video data-sc-src="assets/leg6.mp4" data-sc-src-mobile="assets/leg6-m.mp4" data-sc-lerp="0.14"></video>
+    </div>
+    <div data-sc-segment data-sc-w="1.1" data-sc-linger="0.26" data-sc-waypoint="Reencontro">
+      <img class="sc-world__poster" src="assets/p7.webp" alt="A aproximação até a vigia por fora, e atrás do vidro o rosto de um passageiro." decoding="async">
+      <video data-sc-src="assets/leg7.mp4" data-sc-src-mobile="assets/leg7-m.mp4" data-sc-lerp="0.3"></video>
+    </div>
+  </div>
+
+  <!-- Windows are fractions of the WHOLE track, not of a leg. Leg n spans
+       [n-1, n] x 1.1 / 8.7, so the boundaries are 0.126, 0.253, 0.379, 0.506,
+       0.632, 0.759, 0.885, and the last 0.115 is the landing viewport. -->
+  <div data-sc-world-copy>
+    <div class="sc-world__scrim sc-scrim sc-scrim--band" aria-hidden="true"></div>
+    <!-- The stock band tops out at 58% of the frame, and the last leg stays
+         bright well above that: the closing block measured 2.77:1 against it.
+         Rather than darken the whole flight to fix one leg, this second scrim
+         carries the finale's own window, so the density arrives exactly when
+         that block does and every other leg keeps its full image. It is a
+         sibling of the copy, never a child: the contrast pass hides a copy
+         block and everything inside it to photograph the frame underneath, so
+         a scrim nested in the text is never measured. -->
+    <!-- The cabin has a blazing porthole dead centre and lit ceiling panels, and
+         the hero headline is tall enough to reach them: it measured 1.12:1
+         against the stock band. Same mechanism as the closing scrim, armed on
+         the first leg and leaving with the hero copy. -->
+    <div class="hero-scrim" aria-hidden="true"></div>
+    <div class="finale-scrim" aria-hidden="true"></div>
+
+    <div class="sc-copy sc-copy--lead" data-sc-copy data-sc-window="hero">
+      <p class="kicker">Meridiano</p>
+      <h1 class="sc-display sc-display--xl hero-h1">Venha para o futuro com a gente</h1>
+      <p class="sc-body">Voo orbital tripulado. Registro de bordo.</p>
+    </div>
+
+    <div class="sc-copy sc-copy--trail" data-sc-copy data-sc-window="0.31 0.42">
+      <h2 class="sc-display sc-display--md">Casco de voo</h2>
+      <p class="sc-body">Cada peça tem histórico de teste.</p>
+    </div>
+
+    <div class="sc-copy sc-copy--lead" data-sc-copy data-sc-window="0.55 0.70">
+      <h2 class="sc-display sc-display--lg">A Terra inteira, sem moldura.</h2>
+    </div>
+
+    <div class="sc-copy sc-copy--lead" data-sc-copy data-sc-window="finale">
+      <h2 class="sc-display sc-display--xl hero-h1">Venha, tem lugar ainda</h2>
+      <p class="ask">
+        A próxima tripulação ainda não está completa. Quando abrir a próxima
+        janela de lançamento, dá para
+        <a href="https://inema.pro">reservar assento</a>.
+      </p>
+    </div>
+  </div>
+
+  <nav class="rail" aria-label="Rota do voo">
+    <button class="rail__play" type="button" aria-pressed="false">
+      <span class="rail__icon" aria-hidden="true"></span>
+      <span class="rail__playname">Voar sozinho</span>
+    </button>
+    <button class="rail__leg" data-leg="0" aria-current="true"><span class="rail__name">Cabine</span></button>
+    <button class="rail__leg" data-leg="1"><span class="rail__name">Vigia</span></button>
+    <button class="rail__leg" data-leg="2"><span class="rail__name">Travessia</span></button>
+    <button class="rail__leg" data-leg="3"><span class="rail__name">Deriva</span></button>
+    <button class="rail__leg" data-leg="4"><span class="rail__name">Planeta</span></button>
+    <button class="rail__leg" data-leg="5"><span class="rail__name">Retorno</span></button>
+    <button class="rail__leg" data-leg="6"><span class="rail__name">Reencontro</span></button>
+  </nav>
+
+  <div data-sc-spacer aria-hidden="true"></div>
+</div>
+
+<script src="scrollcraft.js"></script>
+<script>
+ScrollCraft.mount(document);
+
+/* The spacer is sized once, at mount, from innerHeight. If that reports 0 at
+   that moment the track is 0px and the flight never advances, and it fails
+   silently: every leg registers, the clips decode, the console is clean, and
+   the page is simply a still image. One resize makes it re-measure. The fonts
+   half earns its own place: a webfont swapping in changes the measured height
+   of every copy block. */
+/* sc:waypoint only fires when the leg CHANGES, so leg 0 never announces itself
+   on load. Arm it here or the hero scrim sits at zero on the one screen every
+   visitor sees. */
+document.documentElement.classList.add('at-hero');
+
+function relayout() { dispatchEvent(new Event('resize')); }
+addEventListener('load', relayout);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+
+/* The route rail, drawn by the page from the two numbers the engine publishes. */
+addEventListener('sc:waypoint', function (e) {
+  document.querySelectorAll('.rail__leg').forEach(function (el) {
+    el.setAttribute('aria-current', String(+el.dataset.leg === e.detail.index));
+  });
+  /* Arm the closing scrim only on the last leg. Its density then rides
+     --sc-segp, so it arrives with the closing block instead of darkening the
+     whole flight to fix one leg. */
+  document.documentElement.classList.toggle('at-finale', e.detail.index === e.detail.count - 1);
+  document.documentElement.classList.toggle('at-drift', e.detail.index === 3);
+  document.documentElement.classList.toggle('at-hero', e.detail.index === 0);
+});
+
+/* A world you cannot skip around in is a video, so the rail jumps. Leg i starts
+   at the sum of the weights before it, measured in viewport-heights, which is
+   the same unit the track is written in. */
+(function () {
+  var weights = [].map.call(document.querySelectorAll('[data-sc-segment]'), function (s) {
+    return parseFloat(s.getAttribute('data-sc-w')) || 1.3;
+  });
+  document.querySelectorAll('.rail__leg').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var i = +btn.dataset.leg, t = 0;
+      for (var k = 0; k < i; k++) t += weights[k];
+      scrollTo({ top: t * innerHeight, behavior: 'smooth' });
+    });
+  });
+
+  /* Autoplay: fly the whole track without touching anything.
+     The engine reads scroll position and nothing else, so "playing" is just
+     advancing that position on a clock. Speed is set so the flight takes as
+     long as the footage actually is (7 legs x 5s), which is the one pace that
+     does not look like a fast-forward or a crawl. */
+  var play = document.querySelector('.rail__play');
+  var FILM_SECONDS = weights.length * 5;
+  var raf = null, last = 0;
+
+  function travel() { return Math.max(1, document.documentElement.scrollHeight - innerHeight); }
+
+  function step(now) {
+    if (last) {
+      var dt = Math.min((now - last) / 1000, 0.1);   // clamp: a backgrounded tab
+      var y = scrollY + (travel() / FILM_SECONDS) * dt;
+      if (y >= travel() - 1) { scrollTo({ top: travel(), behavior: 'instant' }); return stop(); }
+      scrollTo({ top: y, behavior: 'instant' });
+    }
+    last = now;
+    raf = requestAnimationFrame(step);
+  }
+
+  function start() {
+    if (raf) return;
+    if (scrollY >= travel() - 2) scrollTo({ top: 0, behavior: 'instant' }); // replay from the top
+    last = 0;
+    play.setAttribute('aria-pressed', 'true');
+    raf = requestAnimationFrame(step);
+  }
+
+  function stop() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    play.setAttribute('aria-pressed', 'false');
+  }
+
+  play.addEventListener('click', function () { raf ? stop() : start(); });
+
+  /* Any real input from the person wins immediately. These are the intent
+     events, not 'scroll': autoplay moves the scroll position itself, so
+     listening to 'scroll' would make it cancel itself on its own first frame.
+     A rail click is exempt, because that is still asking to travel. */
+  ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (ev) {
+    addEventListener(ev, function (e) {
+      if (e.target.closest && e.target.closest('.rail')) return;
+      stop();
+    }, { passive: true });
+  });
+})();
+</script>
+</body>
+</html>

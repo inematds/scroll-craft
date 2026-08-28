@@ -26,3 +26,7 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# The local scrollcraft workspace: builds, the fingerprint registry and
+# playwright. Resolved per machine, never shared.
+scrollcraft/

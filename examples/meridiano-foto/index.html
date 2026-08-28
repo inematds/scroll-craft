@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MERIDIANO · a janela fica com você o voo todo</title>
+<meta name="description" content="Um veículo tripulado que sobe com a cabine cheia e dá a volta na Terra. A parte que importa é a janela.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230B0D0F'/><circle cx='16' cy='16' r='7' fill='none' stroke='%23E8863A' stroke-width='2'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  :root {
+    --sc-canvas:     #0B0D0F;
+    --sc-surface:    #15181C;
+    --sc-ink:        #ECEEF0;
+    --sc-ink-soft:   #98A2AA;
+    --sc-accent:     #E8863A;
+    --sc-accent-ink: #0B0D0F;
+    --sc-font-display: "Archivo", system-ui, sans-serif;
+    --sc-font-text:    "IBM Plex Sans", system-ui, sans-serif;
+
+    /* Position of the divider, 0 to 1. A bespoke loop writes this from the
+       act that currently owns the middle of the screen. 0 means the outside
+       has taken the whole page and the split is over. */
+    --split: 0.5;
+    /* Pointer at the glass, -1 to 1, lerped. */
+    --px: 0; --py: 0;
+  }
+
+  /* ---- the two grounds. The grammar wants them held, not interpolated. ---- */
+  .panel--in  { background: var(--sc-surface); }
+  .panel--out { background: #05070A; }
+
+  /* The one licensed exception in taste.md: this page hard-cuts between a light
+     ground and a dark one, so the accent carries a second stop keyed to the
+     ground, and `color` is restated wherever the token is. */
+  .panel--paper {
+    --sc-ink: #14171A; --sc-ink-soft: #4C545B; --sc-accent: #A8501A;
+    color: var(--sc-ink);
+    background: #C6CCD1;
+  }
+
+  /* ---------------------------------------------------------------- stage -- */
+  /* `position` is written with :where() so it carries zero specificity. A plain
+     `.stage { position: relative }` has the same weight as the engine's
+     `.sc-stage { position: sticky }` and, being later, silently wins: the
+     pinned acts then scroll away instead of pinning and the peak renders as an
+     empty black screen. Height is left to the engine on pinned stages for the
+     same reason. */
+  :where(.stage) { position: relative; }
+  .stage { width: 100%; overflow: hidden; }
+  .stage:not([data-sc-stage]) { height: 100vh; height: 100svh; }
+  .panel { position: absolute; inset: 0; overflow: hidden; }
+  .panel--in  { right: auto; width: calc(var(--split) * 100%); }
+  .panel--out { left: calc(var(--split) * 100%); }
+
+  .bed { position: absolute; inset: 0; }
+  .bed img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Copy sits in the bottom band of its own column, never across the frame. */
+  .band {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: var(--sc-7) var(--sc-6) var(--sc-7);
+    display: grid; gap: var(--sc-3);
+  }
+  .band > * { max-width: 34ch; }
+  .veil {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+    background: linear-gradient(to top, rgba(5,7,10,.94) 0%, rgba(5,7,10,.72) 38%, rgba(5,7,10,0) 100%);
+    pointer-events: none;
+  }
+  .panel--paper .veil {
+    background: linear-gradient(to top, rgba(198,204,209,.96) 0%, rgba(198,204,209,.74) 38%, rgba(198,204,209,0) 100%);
+  }
+
+  /* ------------------------------------------------------------- divider -- */
+  /* The chrome. There is no nav bar on this page. */
+  .divider {
+    position: absolute; top: 0; bottom: 0;
+    left: calc(var(--split) * 100%);
+    width: 1px; background: rgba(236,238,240,.26);
+    opacity: calc(var(--split) * 4);
+    pointer-events: none; z-index: 4;
+  }
+  .divider::before {
+    content: ""; position: absolute; left: 0; top: 0; width: 1px;
+    height: calc(var(--adv, 0) * 100%); background: var(--sc-accent);
+  }
+  .rail {
+    position: fixed; top: 0; left: 0; right: 0; height: var(--sc-9);
+    display: flex; align-items: center; z-index: var(--sc-z-chrome);
+    pointer-events: none;
+    opacity: calc(var(--split) * 4);
+    transition: opacity 240ms var(--sc-ease-out);
+    mix-blend-mode: difference;
+  }
+  .rail span {
+    position: absolute; font-family: var(--sc-font-display);
+    font-size: var(--sc-t-xs); font-weight: 600;
+    letter-spacing: var(--sc-track-wide); text-transform: uppercase;
+    color: #9aa4ac;
+  }
+  .rail .r-in  { left: var(--sc-gutter); }
+  .rail .r-out { left: calc(var(--split) * 100%); margin-left: var(--sc-4); }
+
+  /* ------------------------------------------------------------ porthole -- */
+  /* The signature move. The opening is a real mask; the view moves BEHIND it. */
+  .porthole { position: absolute; inset: 0; --r: 30vmin; }
+  .porthole .glassbox {
+    position: absolute; inset: 0;
+    clip-path: circle(var(--r) at 50% 50%);
+  }
+  .porthole .view { position: absolute; inset: -14%; }
+  .porthole .view img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Head parallax: the falloff is what makes it read as thick glass rather
+     than as a layer sliding. */
+  @media (hover: hover) and (pointer: fine) {
+    .porthole .view {
+      transform: translate3d(calc(var(--px) * -30px), calc(var(--py) * -20px), 0);
+    }
+    .porthole .spec {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(
+        58% 42% at calc(50% + var(--px) * 26%) calc(38% + var(--py) * 22%),
+        rgba(232,238,244,.16) 0%, rgba(232,238,244,.05) 42%, rgba(232,238,244,0) 72%);
+      mix-blend-mode: screen;
+    }
+  }
+  .porthole .ring {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: calc(var(--r) * 2); height: calc(var(--r) * 2); border-radius: 50%;
+    border: 1px solid rgba(236,238,240,.34);
+    box-shadow: 0 0 0 14px rgba(11,13,15,.55), inset 0 1px 0 var(--sc-edge);
+    opacity: var(--ringop, 1);
+    pointer-events: none;
+  }
+
+  /* ------------------------------------------------------------- type ----- */
+  .kicker {
+    font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
+    font-weight: 600; letter-spacing: var(--sc-track-wide);
+    text-transform: uppercase; color: var(--sc-accent);
+  }
+  .lede { font-size: var(--sc-t-lg); line-height: 1.5; color: var(--sc-ink-soft); }
+
+  /* -------------------------------------------------------------- act 2 --- */
+  /* Pushed down and desaturated so the type stays the subject. The slow drift
+     is the only thing moving on this side while the outside is all fire. */
+  .bed--crushed img {
+    opacity: .3; filter: grayscale(.5) contrast(1.1);
+    transform: scale(1.06) translateY(calc(var(--sc-p, 0) * -2%));
+  }
+  .argument { position: relative; display: grid; align-content: center; height: 100%; padding: 0 var(--sc-6); gap: var(--sc-5); }
+  .argument p { font-family: var(--sc-font-display); font-size: var(--sc-t-2xl);
+    line-height: 1.14; letter-spacing: var(--sc-track-snug); max-width: 18ch; }
+
+  /* The scrim arrives with the line it protects, so the photograph is left
+     alone for the whole opening and only pays for the last third. */
+  /* It has to arrive AHEAD of the line, not with it: the cue reaches full
+     opacity at p≈0.66, so a scrim still ramping at that point leaves a window
+     where bone type sits on lit cloud at 2.5:1. */
+  .peak-scrim { opacity: calc((var(--sc-p, 0) - 0.46) * 5.5); }
+
+  /* -------------------------------------------------------------- act 5 --- */
+  .close { position: relative; min-height: 100vh; min-height: 100svh; display: grid;
+    align-items: end; overflow: hidden; }
+  .close .bed { position: absolute; inset: 0; }
+  .close .bed img { width: 100%; height: 100%; object-fit: cover; opacity: .62; }
+  .close__inner {
+    position: relative; padding: var(--sc-9) var(--sc-gutter) var(--sc-8);
+    display: grid; gap: var(--sc-5); max-width: var(--sc-maxw); margin: 0 auto; width: 100%;
+  }
+  /* The CTA is a line of running text, not a button island. */
+  .ask { font-size: var(--sc-t-lg); line-height: 1.6; max-width: var(--sc-measure); }
+  .ask a {
+    color: var(--sc-accent); text-decoration: underline;
+    text-underline-offset: .22em; text-decoration-thickness: 1px;
+    transition: color 140ms var(--sc-ease-out);
+  }
+  .ask a:hover { color: var(--sc-ink); }
+  .ask a:focus-visible { outline: 2px solid var(--sc-accent); outline-offset: 4px; border-radius: 2px; }
+  .colophon {
+    border-top: 1px solid var(--sc-hairline); padding-top: var(--sc-4);
+    display: flex; justify-content: space-between; gap: var(--sc-4); flex-wrap: wrap;
+    font-size: var(--sc-t-xs); color: var(--sc-ink-soft);
+  }
+
+  /* --------------------------------------------------------- the phone ---- */
+  /* Two columns cannot hold at 390px. The split becomes vertical stacking and
+     the collapse becomes the view taking the whole screen. */
+  @media (max-width: 860px) {
+    /* Two columns cannot hold at 390px, so the split turns vertical: DENTRO on
+       top, FORA below, and the collapse becomes the view taking the full
+       height. Pinned stages keep the engine's height, because overriding it is
+       the same trap as overriding its position. */
+    .stage:not([data-sc-stage]) { height: auto; }
+    .stage:not([data-sc-stage]) .panel {
+      position: relative; inset: auto; width: 100% !important; left: auto !important;
+      min-height: 60svh;
+    }
+    [data-sc-stage].stage .panel--in {
+      inset: 0 0 auto 0; width: 100% !important;
+      height: calc(var(--split) * 200%);
+    }
+    [data-sc-stage].stage .panel--out {
+      inset: auto 0 0 0; left: 0 !important; width: 100%;
+      height: calc(100% - var(--split) * 200%);
+    }
+    [data-sc-stage].stage .divider {
+      top: calc(var(--split) * 200%); left: 0; right: 0; bottom: auto;
+      width: auto; height: 1px;
+    }
+    .rail { display: none; }
+    .stage:not([data-sc-stage]) .divider { display: none; }
+    .band { padding: var(--sc-6) var(--sc-5); }
+    .band > * { max-width: none; }
+    .hero-h1 { font-size: var(--sc-t-2xl) !important; }
+    .argument { padding: var(--sc-8) var(--sc-5); }
+    .argument p { font-size: var(--sc-t-xl); max-width: none; }
+    .porthole { --r: 34vmin; }
+    /* A corner anchor becomes full-width copy on a phone, so the corner scrim
+       becomes a band. The engine lands this copy low in the frame rather than
+       in the top corner, so the band goes at the bottom. Measured, not guessed. */
+    .peak-scrim {
+      background: linear-gradient(to top,
+        rgba(5,7,10,.94) 0%, rgba(5,7,10,.80) 34%, rgba(5,7,10,0) 66%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .porthole .view { transform: none; }
+    .porthole .spec { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<span data-sc-progress></span>
+<div class="sc-grain" aria-hidden="true"></div>
+
+<!-- The divider is the chrome. These are its labels. -->
+<div class="rail" aria-hidden="true">
+  <span class="r-in">Dentro</span>
+  <span class="r-out">Fora</span>
+</div>
+
+<main id="top">
+
+  <!-- 1 · CONTENÇÃO · flow + in. The split has to be legible before it moves. -->
+  <section data-sc-act="flow" data-split-from="0.5" data-split-to="0.5">
+    <div class="stage">
+      <div class="panel panel--in">
+        <div class="bed"><img src="assets/cabin-wide.webp" width="1600" height="900" alt="Cabine cheia de passageiros presos às cadeiras antes da decolagem."></div>
+        <div class="veil" aria-hidden="true"></div>
+        <div class="band sc-stack" data-sc-in data-sc-stagger="70">
+          <p class="kicker">Meridiano</p>
+          <h1 class="sc-display sc-display--lg hero-h1">Gente comum, presa na mesma cadeira que você.</h1>
+          <p class="sc-body">Ninguém aqui é astronauta. A cabine sobe inteira, de uma vez.</p>
+        </div>
+      </div>
+      <div class="panel panel--out panel--paper">
+        <div class="bed"><img src="assets/hero-sky.webp" width="1600" height="900" alt="Céu pálido de amanhecer visto da torre de lançamento."></div>
+        <div class="veil" aria-hidden="true"></div>
+        <div class="band sc-stack" data-sc-in data-sc-stagger="70">
+          <h2 class="sc-display sc-display--md">Por enquanto, só o céu de sempre.</h2>
+          <p class="sc-body">É a última vez que ele vai parecer grande.</p>
+        </div>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- 2 · PESO · pin + parallax. The outside takes room from the inside. -->
+  <section data-sc-act="pin" data-sc-span="2.6" data-split-from="0.5" data-split-to="0.38">
+    <div data-sc-stage class="stage">
+      <div class="panel panel--in">
+        <!-- The cabin under load. Crushed almost to black on purpose: the beat
+             is weight, and an empty black half reads as unfinished rather than
+             as restraint. -->
+        <div class="bed bed--crushed"><img src="assets/cabin-wide.webp" width="1600" height="900" alt=""></div>
+        <div class="sc-scrim sc-scrim--vignette" aria-hidden="true"></div>
+        <div class="argument">
+          <p data-sc-cue="0 0.34 0">Oito minutos e meio.</p>
+          <p data-sc-cue="0.28 0.64">Você não vai gostar de nenhum deles.</p>
+          <p data-sc-cue="0.58 1">É o preço, e é curto.</p>
+        </div>
+      </div>
+      <div class="panel panel--out">
+        <div class="bed" data-sc-parallax="1.2">
+          <img src="assets/ascent.webp" width="1600" height="900" alt="O veículo subindo, ainda dentro da atmosfera, sobre a coluna de exaustão.">
+        </div>
+        <div class="sc-scrim sc-scrim--vignette" aria-hidden="true"></div>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- 3 · SILÊNCIO · reveal. The window clears. Authored silence: the right
+       column is deliberately near-empty for much of this act. -->
+  <section data-sc-act="flow" data-split-from="0.38" data-split-to="0.42">
+    <div class="stage">
+      <div class="panel panel--in">
+        <div class="bed"><img src="assets/cabin-float.webp" width="1600" height="900" alt="Passageiros sem peso, cintos soltos, cabelo flutuando, todos olhando para o mesmo lado."></div>
+        <div class="veil" aria-hidden="true"></div>
+        <div class="band sc-stack" data-sc-in data-sc-stagger="70">
+          <h2 class="sc-display sc-display--md">O motor corta e ninguém fala nada.</h2>
+          <p class="sc-body">Os cintos sobem sozinhos. É assim que você descobre que chegou.</p>
+        </div>
+      </div>
+      <div class="panel panel--out">
+        <div class="porthole" data-sc-reveal="iris" data-sc-reveal-at="0.12 0.5">
+          <div class="glassbox">
+            <div class="view">
+              <picture>
+                <source media="(max-width: 860px)" srcset="assets/earth-p.webp">
+                <img src="assets/earth.webp" width="2048" height="1152" alt="A borda da Terra vista da órbita, com a camada azul da atmosfera contra o preto do espaço.">
+              </picture>
+            </div>
+            <div class="spec" aria-hidden="true"></div>
+          </div>
+          <div class="ring" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- 4 · ESCALA · PEAK. pin + the bespoke opening. The collapse: the divider
+       leaves and the view takes the whole page. Largest span by a clear margin. -->
+  <section class="peak" data-sc-act="pin" data-sc-span="3.8" data-split-from="0.42" data-split-to="0">
+    <div data-sc-stage class="stage">
+      <div class="panel panel--in">
+        <div class="bed"><img src="assets/cabin-float.webp" width="1600" height="900" alt=""></div>
+        <div class="veil" aria-hidden="true"></div>
+      </div>
+      <div class="panel panel--out">
+        <div class="porthole peak-hole">
+          <div class="glassbox">
+            <div class="view">
+              <picture>
+                <source media="(max-width: 860px)" srcset="assets/earth-p.webp">
+                <img src="assets/earth.webp" width="2048" height="1152" alt="A Terra ocupando o quadro inteiro, oceano, sistemas de nuvens e a linha âmbar do terminador.">
+              </picture>
+            </div>
+            <div class="spec" aria-hidden="true"></div>
+          </div>
+          <div class="ring" aria-hidden="true"></div>
+        </div>
+        <!-- Density only where the line sits, and a sibling of the copy rather
+             than a child of it, so the verification pass can actually see it. -->
+        <div class="sc-scrim sc-scrim--lead peak-scrim" aria-hidden="true"></div>
+        <div class="sc-copy sc-copy--lead" data-sc-cue="0.52 1">
+          <h2 class="sc-display sc-display--xl" data-sc-kinetic="lines">Ela não cabe na janela.</h2>
+        </div>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- 5 · PERTENCIMENTO · flow + in. The split is over; this is the winning
+       column. The ask is running text. -->
+  <section id="reservar" data-sc-act="flow" data-split-from="0" data-split-to="0">
+    <div class="close panel--out">
+      <div class="bed"><img src="assets/cabin-backs.webp" width="1600" height="900" alt="Dois passageiros flutuando de costas, olhando pela escotilha."></div>
+      <div class="veil" aria-hidden="true"></div>
+      <div class="close__inner sc-stack" data-sc-in data-sc-stagger="70">
+        <h2 class="sc-display sc-display--lg">Você vai voltar. A cabine também.</h2>
+        <p class="ask">
+          O voo é curto e a fila é de gente que também nunca subiu.
+          Quando abrir a próxima janela de lançamento, dá para
+          <a href="https://eventos.inema.pro">reservar assento</a>.
+        </p>
+        <p class="colophon">
+          <span>Meridiano</span>
+          <span>Página de demonstração. O veículo é ficção.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script>
+ScrollCraft.mount(document.body);
+
+/* ------------------------------------------------------------------------ *
+ * Bespoke, and deliberately not in the engine.
+ *
+ * 1. --split: the divider's position. Driven by whichever act owns the middle
+ *    of the screen, read from that act's own --sc-p.
+ * 2. --px/--py: the pointer at the glass, lerped so it carries momentum.
+ * 3. The peak's opening radius, driven from the peak act's progress until it
+ *    passes the corners of the viewport.
+ * ------------------------------------------------------------------------ */
+(function () {
+  var root = document.documentElement;
+  var acts = [].slice.call(document.querySelectorAll('[data-split-from]'));
+  var peak = document.querySelector('.peak');
+  var peakHole = document.querySelector('.peak-hole');
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  var narrow = matchMedia('(max-width: 860px)');
+
+  var tx = 0, ty = 0, cx = 0, cy = 0;
+  if (fine && !reduced) {
+    addEventListener('pointermove', function (e) {
+      tx = (e.clientX / innerWidth) * 2 - 1;
+      ty = (e.clientY / innerHeight) * 2 - 1;
+    }, { passive: true });
+  }
+
+  function actP(el) {
+    var v = parseFloat(getComputedStyle(el).getPropertyValue('--sc-p'));
+    return v >= 0 ? v : 0;
+  }
+
+  function frame() {
+    // 1 · the divider
+    var mid = innerHeight * 0.5, split = null, adv = 0;
+    for (var i = 0; i < acts.length; i++) {
+      var r = acts[i].getBoundingClientRect();
+      if (r.top <= mid && r.bottom >= mid) {
+        var p = actP(acts[i]);
+        var a = parseFloat(acts[i].dataset.splitFrom);
+        var b = parseFloat(acts[i].dataset.splitTo);
+        split = a + (b - a) * p;
+        adv = p;
+        break;
+      }
+    }
+    if (split === null) split = parseFloat(root.style.getPropertyValue('--split')) || 0.5;
+    root.style.setProperty('--split', split.toFixed(4));
+    root.style.setProperty('--adv', adv.toFixed(3));
+
+    // 2 · the glass
+    cx += (tx - cx) * 0.07;
+    cy += (ty - cy) * 0.07;
+    root.style.setProperty('--px', cx.toFixed(4));
+    root.style.setProperty('--py', cy.toFixed(4));
+
+    // 3 · the opening becomes the page
+    if (peak && peakHole) {
+      var pp = actP(peak);
+      var base = narrow.matches ? 34 : 30;         // vmin
+      var span = narrow.matches ? 150 : 130;       // enough to clear the corners
+      var eased = pp * pp * (3 - 2 * pp);          // smoothstep: it opens late
+      peakHole.style.setProperty('--r', (base + eased * span).toFixed(2) + 'vmin');
+      peakHole.style.setProperty('--ringop', Math.max(0, 1 - eased * 2.2).toFixed(3));
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
