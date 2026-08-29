@@ -57,7 +57,7 @@
   /* The dash sits on the OUTSIDE edge now, so the label reads inward toward the
      picture instead of off the edge of the screen. */
   .rail__leg {
-    all: unset; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
+    all: unset; pointer-events: auto; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
     align-items: center; gap: var(--sc-3); text-align: right;
     font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
     font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
@@ -84,7 +84,7 @@
 
   /* Autoplay. The flight is normally steered by hand; this hands it back. */
   .rail__play {
-    all: unset; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
+    all: unset; pointer-events: auto; cursor: pointer; display: grid; grid-template-columns: auto 1.5rem;
     align-items: center; gap: var(--sc-3); margin-bottom: var(--sc-4); text-align: right;
     font-family: var(--sc-font-display); font-size: var(--sc-t-xs);
     font-weight: 600; letter-spacing: var(--sc-track-wide); text-transform: uppercase;
