@@ -2,13 +2,13 @@
 
 **🇧🇷 [Português](README.md) · 🇺🇸 [English](README.en.md) · 🇪🇸 [Español](README.es.md)**
 
-**A Claude Code skill that builds premium, scroll-driven websites, and holds them to a real design standard.**
+**A Claude Code skill that builds premium, scroll-driven websites and holds them to a real design standard.**
 
-## 📖 Guia de uso
+## 📖 User guide
 
-Guia completo (landing + passo a passo): **https://inematds.github.io/scroll-craft/guia/**
+Complete guide (landing page + step-by-step instructions): **https://inematds.github.io/scroll-craft/guia/en/**
 
-Most AI website output fails in one of two directions. It is either well behaved and forgettable, or it is a flashy scroll animation with 2.1:1 body text, a headline that wraps to six lines on a phone, and the same six sections every other AI page has. scrollcraft is built to fail neither way: it treats **interaction** and **craft** as one job rather than two.
+Most AI website output fails in one of two ways. It is either well behaved and forgettable, or a flashy scroll animation with 2.1:1 body text, a headline that wraps to six lines on a phone, and the same six sections every other AI page has. scrollcraft is built to avoid both: it treats **interaction** and **craft** as one job rather than two.
 
 [![MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](https://code.claude.com/docs/en/plugins)
@@ -60,7 +60,7 @@ Quiet, documentary, restrained. Museum-label copy over real photography, and a c
 
 A headless browser walks the finished page at every scroll position, waits for the video playhead to settle, and reports:
 
-- **dead scroll**: scroll that changes nothing on screen
+- **dead scroll**: scrolling that changes nothing on screen
 - **cues that never reach full opacity**: copy the reader can only ever see faded
 - **contrast measured on the composited page**, per line, at the brightest frame that ever passes under it, with the direction picked per line so light-on-dark and dark-on-light are both graded correctly
 - **legs stuck on a poster**: a clip that silently never decoded, which looks exactly like a paused film
@@ -151,7 +151,7 @@ The engine is the mechanism and it is **never edited per project**. Theme it wit
 
 ## Honest limitations
 
-- **Only ever run on Windows.** The scripts look for ffmpeg and Chrome in Windows, macOS and Linux locations, but no build has been done on a Mac. `SCROLLCRAFT_FFMPEG` and `SCROLLCRAFT_CHROME` override the search.
+- **Only ever run on Windows.** The scripts look for ffmpeg and Chrome in Windows, macOS, and Linux locations, but no build has been done on a Mac. `SCROLLCRAFT_FFMPEG` and `SCROLLCRAFT_CHROME` override the search.
 - **Generated video is not free.** A ten-leg continuous-world flight is a real spend. A page built from your own assets costs nothing.
 - **It is opinionated on purpose.** It will refuse the layouts and palettes that make AI pages recognisable, and it will argue with you about your peak. If you want a page that looks like everything else, this is the wrong tool.
 
